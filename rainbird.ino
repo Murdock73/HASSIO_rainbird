@@ -13,7 +13,7 @@
 WiFiClient espClient;
 PubSubClient client(espClient);
 String switch1;
-String saveswitch1 = " ";
+String switch2;
 String strTopic;
 String strPayload;
 
@@ -24,12 +24,10 @@ unsigned long timestamp;
 int solenoide1 = D0; // Pin per elettrovalvola 1
 int solenoide2 = D3; // Pin per elettrovalvola 2
 unsigned long startsolenoide1 = 0;
-unsigned long endsolenoide1 = 600000;
+unsigned long endsolenoide1 = 300000;
 unsigned long startsolenoide2 = 0;
-unsigned long endsolenoide2 = 600000;
+unsigned long endsolenoide2 = 300000;
 
-
-bool firstshot = false;
 
 void setup_wifi() {
 
@@ -64,7 +62,6 @@ void callback(char* topic, byte* payload, unsigned int length) {
 
     if(switch1 == "RESET") {
       Serial.println("reset");
-      saveswitch1 = " ";
       ESP.restart();
     }
     
@@ -74,34 +71,41 @@ void callback(char* topic, byte* payload, unsigned int length) {
       startsolenoide1 = 0;
     }
 
-    if(switch1 == "ON" && switch1) {
-      Serial.println("annaffia 1");
+    if(switch1 == "ON") {
+      Serial.println("annaffia 1 e chiudo 2");
+      digitalWrite(solenoide2, LOW); 
+      startsolenoide2 = 0;
+      client.publish("HA/rainbird/solenoide2/state", "OFF");
       startsolenoide1 = millis();
       digitalWrite(solenoide1, HIGH); 
     }
+    switch1 = " ";
   }
 
   if(strTopic == "HA/rainbird/solenoide2"){
-    switch1 = String((char*)payload);
-    Serial.println(switch1);
+    switch2 = String((char*)payload);
+    Serial.println(switch2);
 
-    if(switch1 == "RESET") {
+    if(switch2 == "RESET") {
       Serial.println("reset");
-      saveswitch1 = " ";
       ESP.restart();
     }
     
-    if(switch1 == "OFF") {
+    if(switch2 == "OFF") {
       Serial.println("FERMA solenoide2");
       digitalWrite(solenoide2, LOW);
       startsolenoide2 = 0;
     }
 
-    if(switch1 == "ON" && switch1) {
-      Serial.println("annaffia 2");
+    if(switch2 == "ON") {
+      Serial.println("annaffia 2 e chiudo 1");
+      digitalWrite(solenoide1, LOW); 
+      startsolenoide1 = 0;
+      client.publish("HA/rainbird/solenoide1/state", "OFF");
       startsolenoide2 = millis();
       digitalWrite(solenoide2, HIGH); 
     }
+    switch2 = " ";
   }
 
 }
@@ -138,8 +142,6 @@ void setup()
   setup_wifi(); 
   client.setServer(mqtt_server, 1883);
   client.setCallback(callback);
-  client.publish("HA/rainbird/solenoide1/state", "OFF");
-  client.publish("HA/rainbird/solenoide2/state", "OFF");
 
   // Port defaults to 8266
   // ArduinoOTA.setPort(8266);
