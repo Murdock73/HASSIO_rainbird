@@ -79,7 +79,6 @@ void callback(char* topic, byte* payload, unsigned int length) {
       startsolenoide1 = millis();
       digitalWrite(solenoide1, HIGH); 
     }
-    switch1 = " ";
   }
 
   if(strTopic == "HA/rainbird/solenoide2"){
@@ -105,7 +104,6 @@ void callback(char* topic, byte* payload, unsigned int length) {
       startsolenoide2 = millis();
       digitalWrite(solenoide2, HIGH); 
     }
-    switch2 = " ";
   }
 
 }
@@ -203,5 +201,14 @@ void loop()
       Serial.print("CHIUDO solenoide2");
     }
   }
+  
+  // controllo di sicurezza per chiudere le valvole in caso di discrepanza tra gli stati
+  if (digitalRead(solenoide1) == HIGH && switch1 == "OFF") {
+    digitalWrite(solenoide1, LOW);
+  }  
+  
+  if (digitalRead(solenoide2) == HIGH && switch2 == "OFF") {
+    digitalWrite(solenoide2, LOW);
+  }  
 
 }
