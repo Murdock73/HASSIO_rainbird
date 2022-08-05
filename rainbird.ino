@@ -21,6 +21,7 @@ String strPayload;
 // Misc variables
 unsigned long timestamp; 
 
+int ONLINE = D1; // LED blu per connessione ON
 int solenoide1 = D0; // Pin per elettrovalvola 1
 int solenoide2 = D3; // Pin per elettrovalvola 2
 unsigned long startsolenoide1 = 0;
@@ -116,9 +117,11 @@ void reconnect() {
     // Attempt to connect
     if (client.connect("ESP8266_rainbird", MQTTuser, MQTTpwd)) {
       Serial.println("connected");
+        digitalWrite(ONLINE, HIGH);
       // Once connected, publish an announcement...
       client.subscribe("HA/rainbird/#");
     } else {
+      digitalWrite(ONLINE, LOW);
       Serial.print("failed, rc=");
       Serial.print(client.state());
       Serial.println(" try again in 5 seconds");
@@ -136,6 +139,8 @@ void setup()
   digitalWrite(solenoide1, LOW);
   pinMode(solenoide2, OUTPUT);
   digitalWrite(solenoide2, LOW);
+  pinMode(ONLINE, OUTPUT);
+  digitalWrite(ONLINE, LOW);
   
   setup_wifi(); 
   client.setServer(mqtt_server, 1883);
@@ -178,6 +183,7 @@ void loop()
 {
   ArduinoOTA.handle();
   if (!client.connected()) {
+    digitalWrite(ONLINE, LOW);
     reconnect();
   }
   client.loop();
