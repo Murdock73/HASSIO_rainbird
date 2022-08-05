@@ -25,9 +25,9 @@ int ONLINE = D1; // LED blu per connessione ON
 int solenoide1 = D0; // Pin per elettrovalvola 1
 int solenoide2 = D3; // Pin per elettrovalvola 2
 unsigned long startsolenoide1 = 0;
-unsigned long endsolenoide1 = 300000;
+unsigned long endsolenoide1 = 600000;
 unsigned long startsolenoide2 = 0;
-unsigned long endsolenoide2 = 300000;
+unsigned long endsolenoide2 = 600000;
 
 
 void setup_wifi() {
@@ -75,8 +75,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
     if(switch1 == "ON") {
       Serial.println("annaffia 1 e chiudo 2");
       digitalWrite(solenoide2, LOW); 
-      startsolenoide2 = 0;
-      client.publish("HA/rainbird/solenoide2/state", "OFF");
+      switch2 = "OFF";
       startsolenoide1 = millis();
       digitalWrite(solenoide1, HIGH); 
     }
@@ -101,7 +100,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
       Serial.println("annaffia 2 e chiudo 1");
       digitalWrite(solenoide1, LOW); 
       startsolenoide1 = 0;
-      client.publish("HA/rainbird/solenoide1/state", "OFF");
+      switch1 = "OFF";
       startsolenoide2 = millis();
       digitalWrite(solenoide2, HIGH); 
     }
