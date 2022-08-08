@@ -44,6 +44,8 @@ void setup_wifi() {
   {
     delay(500);
     Serial.print(".");
+    digitalWrite(solenoide1, LOW);
+    digitalWrite(solenoide2, LOW);
   }
 
   Serial.println("");
@@ -181,8 +183,16 @@ void setup()
 void loop()
 {
   ArduinoOTA.handle();
+  
+  if (WiFi.status() != WL_CONNECTED) 
+    digitalWrite(solenoide1, LOW);
+    digitalWrite(solenoide2, LOW);
+  }
+  
   if (!client.connected()) {
     digitalWrite(ONLINE, LOW);
+    digitalWrite(solenoide1, LOW);
+    digitalWrite(solenoide2, LOW);
     reconnect();
   }
   client.loop();
