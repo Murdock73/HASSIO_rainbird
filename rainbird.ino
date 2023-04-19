@@ -26,6 +26,10 @@ int solenoide1 = D0; // Pin per elettrovalvola 1
 int solenoide2 = D3; // Pin per elettrovalvola 2
 int soilsens1 = D6; // Pin per sensore terreno 1
 int soilsens2 = D7; // Pin per sensore terreno 2
+int soilval1;
+int soilval2;
+float soilperc1;
+float soilperc2;
 
 unsigned long startsolenoide1 = 0;
 unsigned long endsolenoide1 = 600000;
@@ -222,15 +226,19 @@ void readsoil()
   // leggo e pubblico i valori dei sensori nel terreno 
   digitalWrite(soilsense1, HIGH);
   delay(100);
-  int soilval1 = analogRead(A0);
-  client.publish("HA/rainbird/soil1/state", soilval1);
-  Serial.print("SoilSense1" + soilval1);
+  soilval1 = analogRead(A0);
   digitalWrite(soilsense1, LOW);
-  // e 2
+  soilperc1 = (100 - ( (soilval1/1023.00) * 100 ) );
+  client.publish("HA/rainbird/soil1/state", soilval1);
+  client.publish("HA/rainbird/soil1p/state", soilperc1);
+  Serial.print("SoilSense1 " + soilval1);
+    // e 2
   digitalWrite(soilsense2, HIGH);
   delay(100);
-  int soilval2 = analogRead(A0);
+  soilval2 = analogRead(A0);
+  digitalWrite(soilsense2, LOW);
+  soilperc2 = (100 - ( (soilval2/1023.00) * 100 ) );
   client.publish("HA/rainbird/soil2/state", soilval2);
-  Serial.print("SoilSense2" + soilval2);
-  digitalWrite(soilsense2, LOW);        
+  client.publish("HA/rainbird/soil2p/state", soilperc2);
+  Serial.print("SoilSense2 " + soilval2);
 }  
