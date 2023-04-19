@@ -24,36 +24,17 @@ unsigned long timestamp;
 int ONLINE = D1; // LED blu per connessione ON
 int solenoide1 = D0; // Pin per elettrovalvola 1
 int solenoide2 = D3; // Pin per elettrovalvola 2
+int soilsens1 = D6; // Pin per sensore terreno 1
+int soilsens2 = D7; // Pin per sensore terreno 2
+
 unsigned long startsolenoide1 = 0;
 unsigned long endsolenoide1 = 600000;
 unsigned long startsolenoide2 = 0;
 unsigned long endsolenoide2 = 600000;
+unsigned long startsoil = 0;
+unsigned long soil = 3600000;
 
-
-void setup_wifi() {
-
-  delay(10);
-  // We start by connecting to a WiFi network
-  Serial.println();
-  Serial.print("Connecting to ");
-  Serial.println(ssid);
-
-  WiFi.begin(ssid, password);
-
-  while (WiFi.status() != WL_CONNECTED) 
-  {
-    delay(500);
-    Serial.print(".");
-    digitalWrite(solenoide1, LOW);
-    digitalWrite(solenoide2, LOW);
-  }
-
-  Serial.println("");
-  Serial.println("WiFi connected");
-  Serial.println("IP address: ");
-  Serial.println(WiFi.localIP());
-  timestamp = millis();
-}
+#include <setupwifi.h>
 
 void callback(char* topic, byte* payload, unsigned int length) {
   payload[length] = '\0';
@@ -142,6 +123,10 @@ void setup()
   digitalWrite(solenoide2, LOW);
   pinMode(ONLINE, OUTPUT);
   digitalWrite(ONLINE, LOW);
+  pinMode(soilsense1, OUTPUT);
+  digitalWrite(soilsense1, LOW);
+  pinMode(soilsense2, OUTPUT);
+  digitalWrite(soilsense2, LOW);
   
   setup_wifi(); 
   client.setServer(mqtt_server, 1883);
@@ -185,6 +170,7 @@ void loop()
   ArduinoOTA.handle();
   
   if (WiFi.status() != WL_CONNECTED) 
+    digitalWrite(ONLINE, LOW);
     digitalWrite(solenoide1, LOW);
     digitalWrite(solenoide2, LOW);
   }
@@ -226,4 +212,25 @@ void loop()
     digitalWrite(solenoide2, LOW);
   }  
 
+  if ((millis() - startsoil) > soil) {
+    readsoil();         
+  }  
 }
+
+void readsoil()
+{
+  // leggo e pubblico i valori dei sensori nel terreno 
+  digitalWrite(soilsense1, HIGH);
+  delay(100);
+  int soilval1 = analogRead(A0);
+  client.publish("HA/rainbird/soil1/state", soilval1);
+  Serial.print("SoilSense1" + soilval1);
+  digitalWrite(soilsense1, LOW);
+  // e 2
+  digitalWrite(soilsense2, HIGH);
+  delay(100);
+  int soilval2 = analogRead(A0);
+  client.publish("HA/rainbird/soil2/state", soilval2);
+  Serial.print("SoilSense2" + soilval2);
+  digitalWrite(soilsense2, LOW);        
+}  
