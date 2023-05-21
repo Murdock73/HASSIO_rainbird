@@ -3,6 +3,8 @@
 #include <WiFiUdp.h>
 #include <PubSubClient.h>
 #include <ArduinoOTA.h>
+#include <Adafruit_Sensor.h>
+#include <DHT.h>
 
 // Connection parms
 #include <SSID.h>
@@ -24,21 +26,53 @@ unsigned long timestamp;
 int ONLINE = D1; // LED blu per connessione ON
 int solenoide1 = D0; // Pin per elettrovalvola 1
 int solenoide2 = D3; // Pin per elettrovalvola 2
-int soilsens1 = D6; // Pin per sensore terreno 1
-int soilsens2 = D7; // Pin per sensore terreno 2
-int soilval1;
-int soilval2;
-float soilperc1;
-float soilperc2;
+int moisture1 = D7; //Pin per sensore umidità del terreno 1
+int moisture2 = D6; //Pin per sensore umidità del terreno 1
+int moisture_value = 0;
+float moisture_percentage;
+
+
+DHT dht(D8, DHT22);
 
 unsigned long startsolenoide1 = 0;
-unsigned long endsolenoide1 = 600000;
+const long endsolenoide1 = 600000;
 unsigned long startsolenoide2 = 0;
-unsigned long endsolenoide2 = 600000;
-unsigned long startsoil = 0;
-unsigned long soil = 3600000;
+const long endsolenoide2 = 600000;
+unsigned long timestampD; 
+const long intervalDHT = 60000;  
+unsigned long timestampMoisture; 
+const long intervalmoisture = 1800000;  
 
-#include <setupwifi.h>
+// current temperature & humidity, updated in loop()
+float temp = 0.0;
+float hum = 0.0;
+char moisture_send[4];
+char temp_send[5];
+char hum_send[5];
+
+
+void setup_wifi() {
+
+  delay(10);
+  // We start by connecting to a WiFi network
+  Serial.println();
+  Serial.print("Connecting to ");
+  Serial.println(ssid);
+
+  WiFi.begin(ssid, password);
+
+  while (WiFi.status() != WL_CONNECTED) 
+  {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println("");
+  Serial.println("WiFi connected");
+  Serial.println("IP address: ");
+  Serial.println(WiFi.localIP());
+  timestamp = millis();
+}
 
 void callback(char* topic, byte* payload, unsigned int length) {
   payload[length] = '\0';
@@ -127,11 +161,12 @@ void setup()
   digitalWrite(solenoide2, LOW);
   pinMode(ONLINE, OUTPUT);
   digitalWrite(ONLINE, LOW);
-  pinMode(soilsense1, OUTPUT);
-  digitalWrite(soilsense1, LOW);
-  pinMode(soilsense2, OUTPUT);
-  digitalWrite(soilsense2, LOW);
-  
+  pinMode(D8, INPUT);
+  pinMode(moisture1, OUTPUT);
+  digitalWrite(moisture1, LOW);
+  pinMode(moisture2, OUTPUT);
+  digitalWrite(moisture2, LOW);
+
   setup_wifi(); 
   client.setServer(mqtt_server, 1883);
   client.setCallback(callback);
@@ -143,7 +178,7 @@ void setup()
   ArduinoOTA.setHostname("esp8266-RAINBIRD");
 
   // No authentication by default
-  // ArduinoOTA.setPassword((const char *)"123");
+  ArduinoOTA.setPassword((const char *)"123");
 
   ArduinoOTA.onStart([]() {
     Serial.println("Start");
@@ -166,19 +201,15 @@ void setup()
   Serial.println("Ready");
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
+  
+  dht.begin();
+  delay(100);
 
 }
 
 void loop()
 {
   ArduinoOTA.handle();
-  
-  if (WiFi.status() != WL_CONNECTED) 
-    digitalWrite(ONLINE, LOW);
-    digitalWrite(solenoide1, LOW);
-    digitalWrite(solenoide2, LOW);
-  }
-  
   if (!client.connected()) {
     digitalWrite(ONLINE, LOW);
     digitalWrite(solenoide1, LOW);
@@ -216,29 +247,50 @@ void loop()
     digitalWrite(solenoide2, LOW);
   }  
 
-  if ((millis() - startsoil) > soil) {
-    readsoil();         
-  }  
-}
+  if ((millis() - timestampD) > intervalDHT) {
+    // save the last time you updated the DHT values
+    timestampD = millis();
+    // Read temperature as Celsius (the default) and Humidity
+    float temp = dht.readTemperature();
+    float hum = dht.readHumidity();
+    Serial.println(temp);
+    Serial.println(hum);
+    String(temp).toCharArray(temp_send, 5);
+    String(hum).toCharArray(hum_send, 5);
+    Serial.println(temp_send);
+    Serial.println(hum_send);
+    client.publish("sensor/TempOut", temp_send);
+    client.publish("sensor/HumOut", hum_send);
+            
+  }
 
-void readsoil()
-{
-  // leggo e pubblico i valori dei sensori nel terreno 
-  digitalWrite(soilsense1, HIGH);
-  delay(100);
-  soilval1 = analogRead(A0);
-  digitalWrite(soilsense1, LOW);
-  soilperc1 = (100 - ( (soilval1/1023.00) * 100 ) );
-  client.publish("HA/rainbird/soil1/state", soilval1);
-  client.publish("HA/rainbird/soil1p/state", soilperc1);
-  Serial.print("SoilSense1 " + soilval1);
-    // e 2
-  digitalWrite(soilsense2, HIGH);
-  delay(100);
-  soilval2 = analogRead(A0);
-  digitalWrite(soilsense2, LOW);
-  soilperc2 = (100 - ( (soilval2/1023.00) * 100 ) );
-  client.publish("HA/rainbird/soil2/state", soilval2);
-  client.publish("HA/rainbird/soil2p/state", soilperc2);
-  Serial.print("SoilSense2 " + soilval2);
-}  
+ if ((millis() - timestampMoisture) > intervalmoisture) {
+    // save the last time you updated the DHT values
+    timestampMoisture = millis();
+    // Attivo il sensore 1 per leggere l'umidità del terreno e pubblico il valore
+    digitalWrite(moisture1, HIGH);
+    delay(100);
+    moisture_value= analogRead(A0);
+    Serial.print("sensore1 ");
+    Serial.println(moisture_value);
+    moisture_percentage = ( 100 - ( (moisture_value/1023.00) * 100 ) );
+    String(moisture_percentage).toCharArray(moisture_send, 4);
+    client.publish("sensor/GrassMoisture", moisture_send);
+    digitalWrite(moisture1, LOW);    
+     // Attivo il sensore 2 per leggere l'umidità del terreno e pubblico il valore
+    digitalWrite(moisture2, HIGH);
+    delay(100);
+    moisture_value= analogRead(A0);
+    Serial.print("sensore2 ");
+    Serial.println(moisture_value);
+    moisture_percentage = ( 100 - ( (moisture_value/1023.00) * 100 ) );
+    String(moisture_percentage).toCharArray(moisture_send, 4);
+    client.publish("sensor/OrtensieMoisture", moisture_send);
+    digitalWrite(moisture2, LOW);    
+            
+  }
+
+
+
+
+}
