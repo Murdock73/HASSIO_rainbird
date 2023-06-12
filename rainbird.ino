@@ -25,14 +25,10 @@ unsigned long timestamp;
 
 int ONLINE = D1; // LED blu per connessione ON
 int solenoide1 = D0; // Pin per elettrovalvola 1
-int solenoide2 = D3; // Pin per elettrovalvola 2
-int moisture1 = D7; //Pin per sensore umidità del terreno 1
-int moisture2 = D6; //Pin per sensore umidità del terreno 1
-int moisture_value = 0;
-float moisture_percentage;
+int solenoide2 = D2; // Pin per elettrovalvola 2
 
 
-DHT dht(D8, DHT22);
+DHT dht(D7, DHT22);
 
 unsigned long startsolenoide1 = 0;
 const long endsolenoide1 = 600000;
@@ -40,13 +36,10 @@ unsigned long startsolenoide2 = 0;
 const long endsolenoide2 = 600000;
 unsigned long timestampD; 
 const long intervalDHT = 60000;  
-unsigned long timestampMoisture; 
-const long intervalmoisture = 1800000;  
 
 // current temperature & humidity, updated in loop()
 float temp = 0.0;
 float hum = 0.0;
-char moisture_send[4];
 char temp_send[5];
 char hum_send[5];
 
@@ -162,10 +155,7 @@ void setup()
   pinMode(ONLINE, OUTPUT);
   digitalWrite(ONLINE, LOW);
   pinMode(D8, INPUT);
-  pinMode(moisture1, OUTPUT);
-  digitalWrite(moisture1, LOW);
-  pinMode(moisture2, OUTPUT);
-  digitalWrite(moisture2, LOW);
+
 
   setup_wifi(); 
   client.setServer(mqtt_server, 1883);
@@ -263,34 +253,5 @@ void loop()
     client.publish("sensor/HumOut", hum_send);
             
   }
-
- if ((millis() - timestampMoisture) > intervalmoisture) {
-    // save the last time you updated the DHT values
-    timestampMoisture = millis();
-    // Attivo il sensore 1 per leggere l'umidità del terreno e pubblico il valore
-    digitalWrite(moisture1, HIGH);
-    delay(100);
-    moisture_value= analogRead(A0);
-    Serial.print("sensore1 ");
-    Serial.println(moisture_value);
-    moisture_percentage = ( 100 - ( (moisture_value/1023.00) * 100 ) );
-    String(moisture_percentage).toCharArray(moisture_send, 4);
-    client.publish("sensor/GrassMoisture", moisture_send);
-    digitalWrite(moisture1, LOW);    
-     // Attivo il sensore 2 per leggere l'umidità del terreno e pubblico il valore
-    digitalWrite(moisture2, HIGH);
-    delay(100);
-    moisture_value= analogRead(A0);
-    Serial.print("sensore2 ");
-    Serial.println(moisture_value);
-    moisture_percentage = ( 100 - ( (moisture_value/1023.00) * 100 ) );
-    String(moisture_percentage).toCharArray(moisture_send, 4);
-    client.publish("sensor/OrtensieMoisture", moisture_send);
-    digitalWrite(moisture2, LOW);    
-            
-  }
-
-
-
 
 }
