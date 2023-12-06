@@ -8,7 +8,7 @@
 
 // Connection parms
 #include <SSID.h>
-#include <rainbirdMQTT.h>
+#include <MQTTuser.h>
 
 
 // PubSubClient Settings
